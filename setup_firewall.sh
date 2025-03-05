@@ -1,30 +1,47 @@
 #!/bin/bash
-# This script sets up a basic firewall using UFW to protect exposed ports.
+# This script sets up a basic firewall using nftables to protect exposed ports.
 
-# Check if UFW is installed; install it if not found
-if ! command -v ufw &> /dev/null
-then
-    echo "UFW not found, installing..."
-    sudo apt-get update && sudo apt-get install -y ufw
+# Check if firewalld is installed and remove it if so
+if dpkg -l | grep -qw firewalld; then
+    echo "firewalld found. Removing firewalld..."
+    sudo apt purge firewalld -yq
 fi
 
-# Enable UFW if not already enabled
-sudo ufw --force enable
+# Check if nftables is installed, install if not
+if ! command -v nft &> /dev/null; then
+    echo "nftables not found, installing..."
+    sudo apt-get update && sudo apt-get install -y nftables
+fi
 
-# Allow SSH connections
-sudo ufw allow ssh
+# Flush any existing nftables ruleset
+sudo nft flush ruleset
 
-# Allow necessary ports for xray-core and nginx
-sudo ufw allow 80/tcp      # Nginx HTTP
-sudo ufw allow 443/tcp     # xray-core and Nginx HTTPS
-sudo ufw allow 443/udp
-sudo ufw allow 2053/tcp    # Additional port for nginx/xray-core
-sudo ufw allow 2053/udp
-sudo ufw allow 8443/tcp    # Additional port for nginx/xray-core
-sudo ufw allow 8443/udp
+# Create a new nftables table and chains
+sudo nft add table inet filter
+sudo nft 'add chain inet filter input { type filter hook input priority 0; policy drop; }'
+sudo nft 'add chain inet filter forward { type filter hook forward priority 0; policy drop; }'
+sudo nft 'add chain inet filter output { type filter hook output priority 0; policy accept; }'
 
-# Set default policies
-sudo ufw default deny incoming
-sudo ufw default allow outgoing
+# Allow loopback traffic
+sudo nft add rule inet filter input iif lo accept
 
-echo "Firewall configured successfully."
+# Allow established and related connections
+sudo nft add rule inet filter input ct state established,related accept
+
+# Allow SSH connections (port 22)
+sudo nft add rule inet filter input tcp dport 22 accept
+
+# Allow HTTP (port 80) for nginx
+sudo nft add rule inet filter input tcp dport 80 accept
+
+# Allow HTTPS (port 443) for xray (only)
+sudo nft add rule inet filter input tcp dport 443 accept
+sudo nft add rule inet filter input udp dport 443 accept
+
+# Allow additional nginx ports (2053 and 8443)
+sudo nft add rule inet filter input tcp dport 2053 accept
+sudo nft add rule inet filter input udp dport 2053 accept
+sudo nft add rule inet filter input tcp dport 8443 accept
+sudo nft add rule inet filter input udp dport 8443 accept
+
+echo "nftables firewall configured successfully."
