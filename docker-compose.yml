@@ -104,7 +104,7 @@ services:
     container_name: fail2ban
     restart: always
     network_mode: host  # Needs to monitor host logs for security
-    privileged: true  # Allows fail2ban to apply firewall rules
+    privileged: true    # Allows fail2ban to apply firewall rules
     volumes:
       - ./fail2ban/jail.local:/etc/fail2ban/jail.local:ro
       - /var/log:/var/log:ro  # Access to system logs for detecting attacks
