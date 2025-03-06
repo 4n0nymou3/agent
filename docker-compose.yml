@@ -14,7 +14,7 @@ services:
       driver: "json-file"
       options:
         max-size: "1m"  # Limit log file size to 1 MB
-        max-file: "1"    # Retain up to 1 log file
+        max-file: "1"   # Retain up to 1 log file
 
   xray:
     build:
@@ -31,7 +31,7 @@ services:
       driver: "json-file"
       options:
         max-size: "1m"  # Limit log file size to 1 MB
-        max-file: "3"    # Retain up to 3 log files (rotate)
+        max-file: "3"   # Retain up to 3 log files (rotate)
     ports:
       - "443:443/tcp"
       - "443:443/udp"
